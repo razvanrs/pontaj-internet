@@ -12,6 +12,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
+        // Add this to your existing schedule method
+        $schedule->command('extra-hours:expire')->daily();
         $schedule->command('app:fetch-romanian-holidays')->yearlyOn(1, 1, '00:00');
     }
 
@@ -20,7 +22,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands(): void
     {
-        $this->load(__DIR__.'/Commands');
+        $this->load(__DIR__ . '/Commands');
 
         require base_path('routes/console.php');
     }

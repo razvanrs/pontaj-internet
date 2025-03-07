@@ -3,69 +3,38 @@
 namespace App\Observers;
 
 use App\Models\EmployeeSchedule;
-use Illuminate\Support\Str;
+use App\Services\ExtraHourService;
 
 class EmployeeScheduleObserver
 {
+    protected $extraHourService;
 
-    /**
-     * Handle the EmployeeSchedule "created" event.
-     *
-     * @param  \App\Models\EmployeeSchedule $EmployeeSchedule
-     * @return void
-     */
-    public function creating(EmployeeSchedule $EmployeeSchedule)
+    public function __construct(ExtraHourService $extraHourService)
     {
+        $this->extraHourService = $extraHourService;
     }
 
     /**
      * Handle the EmployeeSchedule "created" event.
      */
-    public function created(EmployeeSchedule $EmployeeSchedule): void
+    public function created(EmployeeSchedule $employeeSchedule): void
     {
-        //
-    }
-
-    /**
-     * Handle the EmployeeSchedule "updated" event.
-     *
-     * @param  \App\Models\EmployeeSchedule  $EmployeeSchedule
-     * @return void
-     */
-    public function updating(EmployeeSchedule $EmployeeSchedule)
-    {
-        
+        // Calculate and create extra hours when a schedule is created
+        $this->extraHourService->calculateExtraHours($employeeSchedule);
     }
 
     /**
      * Handle the EmployeeSchedule "updated" event.
      */
-    public function updated(EmployeeSchedule $EmployeeSchedule): void
+    public function updated(EmployeeSchedule $employeeSchedule): void
     {
-        //
-    }
+        // Only recalculate extra hours if the schedule times have changed
+        if ($employeeSchedule->wasChanged('date_start') || $employeeSchedule->wasChanged('date_finish')) {
+            // First, we might want to delete existing extra hours for this schedule
+            // This would require extra logic to handle already reconciled hours
 
-    /**
-     * Handle the EmployeeSchedule "deleted" event.
-     */
-    public function deleted(EmployeeSchedule $EmployeeSchedule): void
-    {
-        //
-    }
-
-    /**
-     * Handle the EmployeeSchedule "restored" event.
-     */
-    public function restored(EmployeeSchedule $EmployeeSchedule): void
-    {
-        //
-    }
-
-    /**
-     * Handle the EmployeeSchedule "force deleted" event.
-     */
-    public function forceDeleted(EmployeeSchedule $EmployeeSchedule): void
-    {
-        //
+            // Then recalculate
+            $this->extraHourService->calculateExtraHours($employeeSchedule);
+        }
     }
 }

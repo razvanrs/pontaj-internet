@@ -14,6 +14,22 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ExtraHoursApiController;
+
+// Public routes
+Route::post('/login', [AuthController::class, 'login']);
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    // Get available extra hours for an employee
+    Route::get('/extra-hours/available', [ExtraHoursApiController::class, 'getAvailableExtraHours']);
+
+    // Calculate extra hours for a specific schedule
+    Route::post('/extra-hours/calculate', [ExtraHoursApiController::class, 'calculateExtraHours']);
+
+    // Recalculate extra hours for an employee in a date range
+    Route::post('/extra-hours/recalculate', [ExtraHoursApiController::class, 'recalculateExtraHours']);
+
+    // Reconciliations
+    Route::post('/reconciliations', [\App\Http\Controllers\Api\ReconciliationController::class, 'store']);
 });

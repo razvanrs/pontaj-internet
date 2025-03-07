@@ -5,10 +5,15 @@ use App\Http\Controllers\ManagementCalendarController;
 use App\Http\Controllers\PlanificareProfesoriController;
 use App\Http\Controllers\PlanificarePersonalController;
 use App\Http\Controllers\CarnetAbateriEleviController;
+use App\Http\Controllers\ExtraHourController;
 use App\Http\Controllers\OreRecuperareController;
 use App\Http\Controllers\Rapoarte\RaportSituatiePrezentaZilnicaController;
 use App\Http\Controllers\Rapoarte\RaportSituatiePrezentaLunaraController;
 use App\Http\Controllers\Rapoarte\RaportPlanificareProfesoriController;
+use App\Http\Controllers\ReconciliationController;
+// use App\Http\Controllers\ExportController;
+use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WorkingDaysController;
 use App\Http\Controllers\TemporaryObservationController;
 use App\Data\DayLimitData;
@@ -43,8 +48,34 @@ Route::middleware([
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/management-calendar', [ManagementCalendarController::class, 'index'])->name('management-calendar');
     Route::post('/adauga-eveniment', [ManagementCalendarController::class, 'addEvent'])->name('adauga-eveniment');
-    Route::get('/ore-recuperare', [OreRecuperareController::class, 'index'])->name('ore-recuperare');
-    Route::post('/adauga-ora-recuperare', [OreRecuperareController::class, 'addRecovery'])->name('adauga-ora-recuperare');
+
+    // ORE RECUPERARE
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/ore-recuperare', [App\Http\Controllers\ExtraHoursReconciliationController::class, 'index'])
+            ->name('extra-hours.reconciliation');
+    });
+
+    // Extra Hours Routes
+    Route::prefix('extra-hours')->name('extra-hours.')->group(function () {
+        Route::get('/', [ExtraHourController::class, 'index'])->name('index');
+        Route::get('/create', [ExtraHourController::class, 'create'])->name('create');
+        Route::post('/', [ExtraHourController::class, 'store'])->name('store');
+        Route::get('/{id}', [ExtraHourController::class, 'show'])->name('show');
+        Route::get('/available', [ExtraHourController::class, 'available'])->name('available');
+        Route::post('/calculate/{scheduleId}', [ExtraHourController::class, 'calculateFromSchedule'])->name('calculate');
+    });
+
+    // Reconciliation Routes
+    Route::prefix('reconciliations')->name('reconciliations.')->group(function () {
+        Route::get('/', [ReconciliationController::class, 'index'])->name('index');
+        Route::get('/create', [ReconciliationController::class, 'create'])->name('create');
+        Route::post('/', [ReconciliationController::class, 'store'])->name('store');
+        Route::get('/{id}', [ReconciliationController::class, 'show'])->name('show');
+        Route::get('/{id}/approve', [ReconciliationController::class, 'showApproval'])->name('show-approval');
+        Route::post('/{id}/approve', [ReconciliationController::class, 'approve'])->name('approve');
+        Route::post('/{id}/reject', [ReconciliationController::class, 'reject'])->name('reject');
+        Route::get('/summary', [ReconciliationController::class, 'summary'])->name('summary');
+    });
 
     // RAPOARTE
     Route::get('/raport-situatie-prezenta-zilnica', [RaportSituatiePrezentaZilnicaController::class, 'index'])->name('raport-situatie-prezenta-zilnica');
@@ -88,13 +119,12 @@ Route::middleware([
     // CALENDAR EVENTS
     Route::post('/day-limits/range', [ManagementCalendarController::class, 'getEventsByDateRange'])->name('day-limits.range');
     Route::get('/working-days/{year}/{month}', [WorkingDaysController::class, 'calculate']);
+
     // ACTUALIZARE ZILE LIBERE CALENDAR
     Route::get('/update-calendar/{year}', [WorkingDaysController::class, 'fetchHolidays'])->name('update-calendar');
-
 
     // Temporary Observations Routes
     Route::post('/temporary-observations/store', [TemporaryObservationController::class, 'store'])->name('temp-observations.store');
     Route::get('/temporary-observations/by-month', [TemporaryObservationController::class, 'getByMonth'])->name('temp-observations.by-month');
     Route::delete('/temporary-observations/delete-all', [TemporaryObservationController::class, 'deleteAll'])->name('temp-observations.delete-all');
-
 });

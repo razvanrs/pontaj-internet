@@ -709,6 +709,7 @@ const fetchBusinessUnitEmployees = async () => {
         toast.error('Eroare la încărcarea angajaților')
     }
 }
+
 const openSignatureEditor = () => {
     // Load employees if needed
     if (businessUnitEmployees.value.length === 0) {

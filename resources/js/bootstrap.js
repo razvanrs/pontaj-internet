@@ -9,6 +9,30 @@ window.axios = axios;
 
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
+// Set up axios to include credentials
+axios.defaults.withCredentials = true;
+
+// Login function
+async function login(email, password) {
+    // Get CSRF cookie
+    await axios.get('/sanctum/csrf-cookie');
+
+    // Attempt login
+    const response = await axios.post('/api/login', {
+        email,
+        password,
+        device_name: 'browser'
+    });
+
+    // Store token
+    localStorage.setItem('token', response.data.token);
+
+    // Set token for future requests
+    axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+
+    return response.data.user;
+}
+
 /**
  * Echo exposes an expressive API for subscribing to channels and listening
  * for events that are broadcast by Laravel. Echo and event broadcasting

@@ -173,7 +173,7 @@ const navigation = [
     { name: 'Planificare profesori', href: '/planificare-profesori', icon: AcademicCapIcon, current: false },
     { name: 'Planificare personal', href: '/planificare-personal', icon: BriefcaseIcon, current: false },
     { name: 'Carnet abateri elevi', href: '/carnet-abateri-elevi', icon: IdentificationIcon, current: false },
-    // { name: 'Ore recuperare', href: '/ore-recuperare', icon: ClockIcon, current: false },
+    { name: 'Ore recuperare', href: '/ore-recuperare', icon: ClockIcon, current: false },
     {
         name: 'Rapoarte',
         icon: DocumentChartBarIcon,
