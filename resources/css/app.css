@@ -1,0 +1,136 @@
+@layer tailwind-base, primevue, tailwind-utilities;
+
+@layer tailwind-base {
+  @tailwind base;
+}
+
+@layer tailwind-utilities {
+  @tailwind components;
+  @tailwind utilities;
+}
+
+@layer base {
+    body {
+        @apply font-sans text-base text-primary bg-white;
+    }
+
+    html {
+        font-size: 15px;
+    }
+
+    p {
+        @apply leading-7;
+    }
+}
+
+/* CUSTOM CSS */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+*:focus {
+    outline: 0 !important;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+p {
+    @apply leading-7;
+}
+
+.Vue-Toastification__toast--success {
+  background-color: #4f46e5 !important;
+}
+
+
+/* MAIN CALENDAR */
+
+@media only screen and (max-width: 480px) {
+    button.fc-today-button {
+        display: none !important;
+    }
+
+    button.fc-timeGridWeek-button {
+        display: none !important;
+    }
+
+    button.fc-timeGridDay-button {
+        display: none !important;
+    }
+}
+
+.fc .fc-view-harness {
+  height: 71vh !important;
+}
+
+.fc table {
+  font-size: 0.875rem;
+}
+
+.fc .fc-col-header-cell-cushion {
+  padding: 5px 5px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.fc.fc-theme-standard .fc-view-harness th {
+  color: #343a40;
+  font-weight: 600;
+}
+
+.fc .fc-daygrid-day.fc-day-today {
+  background-color: #eef2ff;
+}
+
+.fc .fc-timegrid-axis-cushion, .fc .fc-timegrid-slot-label-cushion {
+  padding: 5px 5px;
+  line-height: 1.1rem
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1.2rem;
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1rem;
+}
+
+.fc.fc-theme-standard .fc-toolbar .fc-button {
+  font-size: 0.875rem !important;
+}
+
+.fc.fc-theme-standard .fc-toolbar .fc-button .fc-icon-chevron-right {
+  font-size: 0.875rem !important;
+  margin-top: -3px;
+}
+
+.fc.fc-theme-standard .fc-toolbar .fc-button .fc-icon-chevron-left {
+  font-size: 0.875rem !important;
+  margin-top: -3px;
+}
+
+.fc-v-event .fc-event-main-frame {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.fc-v-event .fc-event-title {
+  margin-top: -8px;
+  font-weight: 500;
+}
+
+[x-cloak] {
+    display: none;
+}
+
+
+.p-datepicker .p-datepicker-day-cell {
+  padding: 0.03rem;
+}
+
+.p-datepicker .p-datepicker-day-view {
+  border-collapse: collapse;
+  font-size: 0.865rem;
+}
