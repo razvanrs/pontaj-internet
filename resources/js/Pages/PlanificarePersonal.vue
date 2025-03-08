@@ -216,38 +216,46 @@
                                     </div>
 
                                     <div v-if="form.scheduleStatus && form.scheduleStatus.id === 1 && hours > 480" class="space-y-2 sm:col-span-2">
-                                        <InputLabel value="Denumire serviciu (opțional)" />
-                                        <div class="flex items-center space-x-2">
-                                            <Select
-                                                v-model="form.displayCode"
-                                                :options="displayOptions"
-                                                optionLabel="name"
-                                                optionValue="code"
-                                                placeholder="Selectează denumire serviciu"
-                                                class="w-full md:w-14rem"
-                                            >
-                                                <template #value="slotProps">
-                                                    <div v-if="slotProps.value" class="flex align-items-center">
-                                                        <div>{{ displayOptions.find(opt => opt.code === slotProps.value)?.name }}</div>
-                                                    </div>
-                                                    <span v-else>
-                                                        {{ slotProps.placeholder }}
-                                                    </span>
-                                                </template>
-                                                <template #option="slotProps">
-                                                    <div class="flex align-items-center">
-                                                        <div>{{ slotProps.option.name }}</div>
-                                                    </div>
-                                                </template>
-                                            </Select>
-                                            <button
-                                                type="button"
-                                                v-if="form.displayCode"
-                                                @click="form.displayCode = null"
-                                                class="p-2 text-gray-400 hover:text-gray-500"
-                                            >
-                                                <TrashIcon class="h-5 w-5" />
-                                            </button>
+                                        <InputLabel value="Denumire serviciu și justificare ore suplimentare" />
+                                        <div class="flex flex-col space-y-3">
+                                            <div class="flex items-center space-x-2">
+                                                <Select
+                                                    v-model="form.displayCode"
+                                                    :options="displayOptions"
+                                                    optionLabel="name"
+                                                    optionValue="code"
+                                                    placeholder="Selectează denumire serviciu"
+                                                    class="w-full md:w-14rem"
+                                                >
+                                                    <template #value="slotProps">
+                                                        <div v-if="slotProps.value" class="flex align-items-center">
+                                                            <div>{{ displayOptions.find(opt => opt.code === slotProps.value)?.name }}</div>
+                                                        </div>
+                                                        <span v-else>
+                                                            {{ slotProps.placeholder }}
+                                                        </span>
+                                                    </template>
+                                                    <template #option="slotProps">
+                                                        <div class="flex align-items-center">
+                                                            <div>{{ slotProps.option.name }}</div>
+                                                        </div>
+                                                    </template>
+                                                </Select>
+                                                <button
+                                                    type="button"
+                                                    v-if="form.displayCode"
+                                                    @click="form.displayCode = null"
+                                                    class="p-2 text-gray-400 hover:text-gray-500"
+                                                >
+                                                    <TrashIcon class="h-5 w-5" />
+                                                </button>
+                                            </div>
+                                            <Textarea
+                                                v-model="form.overtimeJustification"
+                                                rows="3"
+                                                placeholder="Justificarea orelor suplimentare..."
+                                                class="w-full"
+                                            />
                                         </div>
                                     </div>
 
@@ -315,6 +323,7 @@ import DatePicker from 'primevue/datepicker'
 import ConfirmDialog from 'primevue/confirmdialog'
 import PrimaryButton from '@/Components/elements/PrimaryButton.vue'
 import SecondaryButton from '@/Components/elements/SecondaryButton.vue'
+import Textarea from 'primevue/textarea'
 
 import { DateTime } from 'luxon'
 
@@ -420,6 +429,7 @@ const form = useForm({
     dateStart: null,
     dateEnd: null,
     displayCode: null,
+    overtimeJustification: '', // Adăugat
 })
 
 function changeEmployee (event) {

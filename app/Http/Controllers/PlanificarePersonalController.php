@@ -166,6 +166,7 @@ class PlanificarePersonalController extends Controller
             $employeeSchedule->date_finish = $datef->format("Y-m-d H:i:s");
             $employeeSchedule->total_minutes =$datef->diffInMinutes($dates);
             $employeeSchedule->display_code = $request->displayCode;
+            $employeeSchedule->overtime_justification = $request->overtimeJustification;  
             $employeeSchedule->save();
         }
 
@@ -437,6 +438,7 @@ class PlanificarePersonalController extends Controller
             $employeeSchedule->date_finish = $datef->format("Y-m-d H:i:s");
             $employeeSchedule->total_minutes =$datef->diffInMinutes($dates);
             $employeeSchedule->display_code = $request->displayCode;
+            $employeeSchedule->overtime_justification = $request->overtimeJustification;
             $employeeSchedule->save();
         }
 
