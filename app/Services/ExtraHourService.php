@@ -30,64 +30,280 @@ class ExtraHourService
         $workingEndTime = Config::get('extra_hours.regular_hours.end', 16);    // Default 4 PM
         $weekendDays = Config::get('extra_hours.weekend_days', [0, 6]);        // Default Saturday and Sunday
 
+        // Define specific segment boundaries for overnight shifts
+        $eveningSegment1End = 22; // 10 PM
+        $nightSegment1End = 0;    // Midnight
+        $nightSegment2End = 6;    // 6 AM
+        $morningSegmentEnd = $workingStartTime; // 8 AM
+
         $extraHours = collect();
 
         // Convert schedule times to Carbon objects
         $scheduleStart = Carbon::parse($schedule->date_start);
         $scheduleEnd = Carbon::parse($schedule->date_finish);
-        
+
         // Process the schedule based on whether it's on a weekend or a weekday
         if (in_array($scheduleStart->dayOfWeek, $weekendDays)) {
-            // For weekend shifts - all hours count as extra
-            $extraHour = ExtraHour::create([
-                'employee_id' => $schedule->employee_id,
-                'employee_schedule_id' => $schedule->id,
-                'date' => $scheduleStart->format('Y-m-d'),
-                'start_time' => $scheduleStart,
-                'end_time' => $scheduleEnd,
-                'business_unit_id' => $schedule->businessUnit->id ?? null,
-                'description' => 'Weekend: Toate orele',
-            ]);
-            
-            $extraHours->push($extraHour);
+            // Weekend shift - all hours are extra
+            $extraHours = $this->processWeekendShift($schedule, $scheduleStart, $scheduleEnd);
         } else {
-            // For weekday shifts
-            $regularStart = $scheduleStart->copy()->setTime($workingStartTime, 0, 0);
-            $regularEnd = $scheduleStart->copy()->setTime($workingEndTime, 0, 0);
-            
-            // If schedule starts before regular hours
-            if ($scheduleStart < $regularStart) {
-                $extraHour = ExtraHour::create([
-                    'employee_id' => $schedule->employee_id,
-                    'employee_schedule_id' => $schedule->id,
-                    'date' => $scheduleStart->format('Y-m-d'),
-                    'start_time' => $scheduleStart,
-                    'end_time' => min($regularStart, $scheduleEnd),
-                    'business_unit_id' => $schedule->businessUnit->id ?? null,
-                    'description' => 'Ore suplimentare: înainte de program',
-                ]);
-                
-                $extraHours->push($extraHour);
-            }
-            
-            // If schedule extends beyond regular hours
-            if ($scheduleEnd > $regularEnd) {
-                $extraHour = ExtraHour::create([
-                    'employee_id' => $schedule->employee_id,
-                    'employee_schedule_id' => $schedule->id,
-                    'date' => $scheduleStart->format('Y-m-d'),
-                    'start_time' => max($regularEnd, $scheduleStart),
-                    'end_time' => $scheduleEnd,
-                    'business_unit_id' => $schedule->businessUnit->id ?? null,
-                    'description' => 'Ore suplimentare: după program',
-                ]);
-                
-                $extraHours->push($extraHour);
-            }
+            // Weekday shift - process according to specific segments
+            $extraHours = $this->processWeekdayShift(
+                $schedule,
+                $scheduleStart,
+                $scheduleEnd,
+                $workingStartTime,
+                $workingEndTime,
+                $eveningSegment1End,
+                $nightSegment1End,
+                $nightSegment2End,
+                $morningSegmentEnd
+            );
         }
 
         return $extraHours->filter();
-    }  
+    }
+
+    /**
+     * Process a shift occurring on a weekend (all hours are extra)
+     *
+     * @param EmployeeSchedule $schedule
+     * @param Carbon $start
+     * @param Carbon $end
+     * @return Collection
+     */
+    private function processWeekendShift(
+        EmployeeSchedule $schedule,
+        Carbon $start,
+        Carbon $end
+    ): Collection {
+        $extraHours = collect();
+        $currentDay = $start->copy()->startOfDay();
+        $nextDay = $currentDay->copy()->addDay()->startOfDay();
+
+        // If schedule is within the same day
+        if ($start->isSameDay($end)) {
+            $extraHours->push($this->createExtraHour(
+                $schedule->employee_id,
+                $schedule->id,
+                $currentDay,
+                $start,
+                $end,
+                $schedule->businessUnit->id ?? null,
+                'Weekend shift: Full day'
+            ));
+        } else {
+            // First day
+            $extraHours->push($this->createExtraHour(
+                $schedule->employee_id,
+                $schedule->id,
+                $currentDay,
+                $start,
+                $nextDay,
+                $schedule->businessUnit->id ?? null,
+                'Weekend shift: Day 1'
+            ));
+
+            // Additional days if schedule spans more than 2 days
+            $currentDay = $nextDay->copy();
+            while (!$currentDay->isSameDay($end) && $currentDay < $end) {
+                $nextDay = $currentDay->copy()->addDay()->startOfDay();
+                $extraHours->push($this->createExtraHour(
+                    $schedule->employee_id,
+                    $schedule->id,
+                    $currentDay,
+                    $currentDay,
+                    $nextDay,
+                    $schedule->businessUnit->id ?? null,
+                    'Weekend shift: Intermediate day'
+                ));
+                $currentDay = $nextDay;
+            }
+
+            // Last day
+            if ($currentDay < $end) {
+                $extraHours->push($this->createExtraHour(
+                    $schedule->employee_id,
+                    $schedule->id,
+                    $currentDay,
+                    $currentDay,
+                    $end,
+                    $schedule->businessUnit->id ?? null,
+                    'Weekend shift: Last day'
+                ));
+            }
+        }
+
+        return $extraHours;
+    }
+
+    /**
+     * Process a shift occurring on weekdays (only non-regular hours are extra)
+     * This implementation uses specific time segments as required
+     *
+     * @param EmployeeSchedule $schedule
+     * @param Carbon $start
+     * @param Carbon $end
+     * @param int $workingStartTime
+     * @param int $workingEndTime
+     * @param int $eveningSegment1End
+     * @param int $nightSegment1End
+     * @param int $nightSegment2End
+     * @param int $morningSegmentEnd
+     * @return Collection
+     */
+    private function processWeekdayShift(
+        EmployeeSchedule $schedule,
+        Carbon $start,
+        Carbon $end,
+        int $workingStartTime,
+        int $workingEndTime,
+        int $eveningSegment1End,
+        int $nightSegment1End,
+        int $nightSegment2End,
+        int $morningSegmentEnd
+    ): Collection {
+        $extraHours = collect();
+
+        // Get the date for the start day
+        $startDay = $start->copy()->startOfDay();
+
+        // Define time boundaries for the first day
+        $regularStart = $startDay->copy()->setHour($workingStartTime)->setMinute(0)->setSecond(0);
+        $regularEnd = $startDay->copy()->setHour($workingEndTime)->setMinute(0)->setSecond(0);
+        $eveningSegment1EndTime = $startDay->copy()->setHour($eveningSegment1End)->setMinute(0)->setSecond(0);
+        $midnightTime = $startDay->copy()->addDay()->startOfDay();
+
+        // Check if schedule starts before working hours on the first day
+        if ($start < $regularStart) {
+            // Morning extra hours (before regular hours)
+            $extraHours->push($this->createExtraHour(
+                $schedule->employee_id,
+                $schedule->id,
+                $startDay,
+                $start,
+                min($regularStart, $end),
+                $schedule->businessUnit->id ?? null,
+                'Morning extra hours (before work)'
+            ));
+        }
+
+        // Check if schedule continues after working hours on the first day
+        if ($end > $regularEnd && $start <= $regularEnd) {
+            // Evening segment 1 (workingEndTime to eveningSegment1End)
+            if ($end > $regularEnd) {
+                $segmentEnd = min($eveningSegment1EndTime, $end);
+                if ($segmentEnd > $regularEnd) {
+                    $extraHours->push($this->createExtraHour(
+                        $schedule->employee_id,
+                        $schedule->id,
+                        $startDay,
+                        $regularEnd,
+                        $segmentEnd,
+                        $schedule->businessUnit->id ?? null,
+                        'Evening extra hours (after work, before 22:00)'
+                    ));
+                }
+            }
+
+            // Evening segment 2 (eveningSegment1End to midnight)
+            if ($end > $eveningSegment1EndTime) {
+                $segmentEnd = min($midnightTime, $end);
+                if ($segmentEnd > $eveningSegment1EndTime) {
+                    $extraHours->push($this->createExtraHour(
+                        $schedule->employee_id,
+                        $schedule->id,
+                        $startDay,
+                        $eveningSegment1EndTime,
+                        $segmentEnd,
+                        $schedule->businessUnit->id ?? null,
+                        'Night extra hours (22:00 to midnight)'
+                    ));
+                }
+            }
+        } else if ($start > $regularEnd) {
+            // If shift starts after regular hours on first day
+
+            // Evening segment 1 (workingEndTime to eveningSegment1End)
+            if ($start < $eveningSegment1EndTime) {
+                $segmentEnd = min($eveningSegment1EndTime, $end);
+                $extraHours->push($this->createExtraHour(
+                    $schedule->employee_id,
+                    $schedule->id,
+                    $startDay,
+                    $start,
+                    $segmentEnd,
+                    $schedule->businessUnit->id ?? null,
+                    'Evening extra hours (after work, before 22:00)'
+                ));
+            }
+
+            // Evening segment 2 (eveningSegment1End to midnight)
+            if ($start < $midnightTime && $end > $eveningSegment1EndTime) {
+                $segmentStart = max($start, $eveningSegment1EndTime);
+                $segmentEnd = min($midnightTime, $end);
+                if ($segmentEnd > $segmentStart) {
+                    $extraHours->push($this->createExtraHour(
+                        $schedule->employee_id,
+                        $schedule->id,
+                        $startDay,
+                        $segmentStart,
+                        $segmentEnd,
+                        $schedule->businessUnit->id ?? null,
+                        'Night extra hours (22:00 to midnight)'
+                    ));
+                }
+            }
+        }
+
+        // Handle overnight shifts (crossing to next day)
+        if ($end > $midnightTime) {
+            $nextDay = $midnightTime->copy();
+
+            // Define time boundaries for the next day
+            $nextDayRegularStart = $nextDay->copy()->setHour($workingStartTime)->setMinute(0)->setSecond(0);
+            $nightSegment2EndTime = $nextDay->copy()->setHour($nightSegment2End)->setMinute(0)->setSecond(0);
+            $morningSegmentEndTime = $nextDay->copy()->setHour($morningSegmentEnd)->setMinute(0)->setSecond(0);
+
+            // Night segment 1 (midnight to 6 AM)
+            if ($end > $nextDay) {
+                $segmentEnd = min($nightSegment2EndTime, $end);
+                $extraHours->push($this->createExtraHour(
+                    $schedule->employee_id,
+                    $schedule->id,
+                    $nextDay,
+                    $nextDay,
+                    $segmentEnd,
+                    $schedule->businessUnit->id ?? null,
+                    'Night extra hours (midnight to 6:00)'
+                ));
+            }
+
+            // Morning segment (6 AM to working start time, usually 8 AM)
+            if ($end > $nightSegment2EndTime) {
+                $segmentEnd = min($morningSegmentEndTime, $end);
+                if ($segmentEnd > $nightSegment2EndTime) {
+                    $extraHours->push($this->createExtraHour(
+                        $schedule->employee_id,
+                        $schedule->id,
+                        $nextDay,
+                        $nightSegment2EndTime,
+                        $segmentEnd,
+                        $schedule->businessUnit->id ?? null,
+                        'Morning extra hours (6:00 to 8:00)'
+                    ));
+                }
+            }
+
+            // If shift extends beyond working start time on next day
+            if ($end > $nextDayRegularStart) {
+                // Additional processing for multi-day shifts if needed
+                // This is for shifts that extend beyond the second day's working start time
+            }
+        }
+
+        return $extraHours;
+    }
 
     /**
      * Create an extra hour record

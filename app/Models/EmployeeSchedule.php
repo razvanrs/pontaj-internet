@@ -29,7 +29,6 @@ class EmployeeSchedule extends Model
         'total_minutes',
         'total_hours',
         'display_code',
-        'overtime_justification',
     ];
 
     /**

@@ -82,17 +82,6 @@ class ExtraHour extends Model
     }
 
     /**
-     * Get the overtime justification from the associated employee schedule
-     */
-    public function getOvertimeJustificationAttribute()
-    {
-        if ($this->employeeSchedule) {
-            return $this->employeeSchedule->overtime_justification;
-        }
-        return null;
-    }
-
-    /**
      * Get the employee that owns the extra hours
      */
     public function employee(): BelongsTo

@@ -49,17 +49,8 @@ class ExtraHoursApiController extends Controller
         $groupBySchedule = filter_var($request->input('group_by_schedule', false), FILTER_VALIDATE_BOOLEAN);
         $includeReconciled = filter_var($request->input('include_reconciled', false), FILTER_VALIDATE_BOOLEAN);
     
-        // Get available extra hours with reconciliations
-        $extraHours = ExtraHour::where('employee_id', $employeeId)
-            ->where('expiry_date', '>=', now()->startOfDay())
-            ->where(function($query) {
-                $query->where('is_fully_reconciled', false)
-                      ->orWhere('remaining_minutes', '>', 0);
-            })
-            ->with(['reconciliations', 'employeeSchedule'])
-            ->orderBy('date', 'asc')
-            ->orderBy('start_time', 'asc')
-            ->get();
+        // Get available extra hours
+        $extraHours = $this->extraHourService->getAvailableExtraHours($employeeId);
     
         // Get reconciled hours if requested
         $reconciledHours = [];
@@ -202,15 +193,13 @@ class ExtraHoursApiController extends Controller
     {
         // Get all available extra hours
         $extraHours = ExtraHour::where('employee_id', $employeeId)
-        ->where('expiry_date', '>=', now()->startOfDay())
-        ->where(function($query) {
-            $query->where('is_fully_reconciled', false)
-                  ->orWhere('remaining_minutes', '>', 0);
-        })
-        ->with(['reconciliations', 'employeeSchedule'])
-        ->orderBy('date', 'asc')
-        ->orderBy('start_time', 'asc')
-        ->get();
+            ->where('expiry_date', '>=', now()->startOfDay())
+            ->where('is_fully_reconciled', false)
+            ->where('remaining_minutes', '>', 0)
+            ->with('employeeSchedule')
+            ->orderBy('date', 'asc')
+            ->orderBy('start_time', 'asc')
+            ->get();
 
         // Group by employee_schedule_id
         $grouped = [];

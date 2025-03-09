@@ -97,6 +97,12 @@
                                 </div>
                             </div>
 
+                            <!-- Group By Toggle -->
+                            <!-- <div class="flex items-center space-x-2">
+                                <InputSwitch v-model="groupBySchedule" @change="onGroupByChange" />
+                                <label class="text-sm text-gray-700">Grupare ore după dată</label>
+                            </div> -->
+
                             <!-- Available Extra Hours Table -->
                             <div v-if="!groupBySchedule" class="space-y-3">
                                 <div class="flex justify-between items-center uppercase h-10">
@@ -107,138 +113,290 @@
                                     </button>
                                 </div>
 
-                                <DataTable
-                                    :value="availableExtraHours"
-                                    v-model:selection="selectedExtraHoursTable"
-                                    @row-select="onRowSelect"
-                                    @row-unselect="onRowUnselect"
-                                    @selection-change="onSelectionChange"
-                                    :paginator="true"
-                                    :rows="10"
-                                    paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
-                                    :rowsPerPageOptions="[5, 10, 20, 50]"
-                                    v-model:expandedRows="expandedRows"
-                                    dataKey="id"
-                                    class="p-datatable-sm"
-                                    :rowHover="true"
-                                    stripedRows
-                                    showGridlines
-                                    tableStyle="min-width: 100%"
-                                >
-                                    <template #empty>
-                                        <div class="text-center py-4">
-                                            Nu există ore suplimentare disponibile pentru acest angajat.
+                                <div class="rounded-lg border border-gray-200 overflow-hidden">
+                                    <div class="overflow-x-auto">
+                                        <table class="min-w-full divide-y divide-gray-200">
+                                            <thead class="bg-gray-50">
+                                                <tr>
+                                                    <th scope="col"
+                                                        class="p-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        <input type="checkbox" v-model="selectAll"
+                                                               @change="toggleAllExtraHours"
+                                                               class="h-4 w-4 rounded border-gray-300">
+                                                    </th>
+                                                    <th scope="col"
+                                                        class="p-5 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">
+                                                        Data
+                                                    </th>
+                                                    <th scope="col"
+                                                        class="p-5 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">
+                                                        Interval orar
+                                                    </th>
+                                                    <th scope="col"
+                                                        class="p-5 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">
+                                                        Descriere
+                                                    </th>
+                                                    <th scope="col"
+                                                        class="p-5 text-center text-xs font-medium text-gray-800 uppercase tracking-wider">
+                                                        Total ore
+                                                    </th>
+                                                    <th scope="col"
+                                                        class="p-5 text-center text-xs font-medium text-gray-800 uppercase tracking-wider">
+                                                        Ore disponibile
+                                                    </th>
+                                                    <th scope="col"
+                                                        class="p-5 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">
+                                                        Expiră la
+                                                    </th>
+                                                    <th scope="col"
+                                                        class="p-5 text-center text-xs font-medium text-gray-800 uppercase tracking-wider w-40">
+                                                        {{ selectedExtraHoursIds.length > 0 ? 'Ore rămase' : 'Ore utilizate' }}
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="bg-white divide-y divide-gray-200">
+                                                <tr v-for="extraHour in availableExtraHours" :key="extraHour.id"
+                                                    :class="{ 'bg-brand/5': isSelected(extraHour.id) }">
+                                                    <td class="p-5 whitespace-nowrap">
+                                                        <input type="checkbox" :value="extraHour.id"
+                                                               v-model="selectedExtraHoursIds"
+                                                               @change="updateSelectedHours(extraHour)"
+                                                               class="h-4 w-4 rounded border-gray-300">
+                                                    </td>
+                                                    <td class="p-5 whitespace-nowrap text-sm text-gray-500">
+                                                        {{ formatDate(extraHour.date) }}
+                                                    </td>
+                                                    <td class="p-5 whitespace-nowrap text-sm text-gray-500">
+                                                        {{ formatTime(extraHour.start_time) }} - {{
+                                                            formatTime(extraHour.end_time) }}
+                                                    </td>
+                                                    <td class="p-5 whitespace-nowrap text-sm text-gray-500">
+                                                        {{ extraHour.description || '-' }}
+                                                    </td>
+                                                    <td class="py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                                        {{ formatMinutesToHours(extraHour.total_minutes) }}
+                                                    </td>
+                                                    <td class="py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                                        {{ formatMinutesToHours(extraHour.remaining_minutes) }}
+                                                    </td>
+                                                    <td class="p-5 whitespace-nowrap text-sm text-gray-500">
+                                                        {{ formatDate(extraHour.expiry_date) }}
+                                                    </td>
+                                                    <td class="p-5 whitespace-nowrap text-sm text-center">
+                                                        <input v-if="isSelected(extraHour.id)" type="number"
+                                                               v-model="getSelectedHour(extraHour.id).hours_to_use"
+                                                               @input="updateMinutesFromHours(extraHour.id)" min="1"
+                                                               :max="minutesToHoursForInput(extraHour.remaining_minutes)"
+                                                               class="w-20 px-2  border border-gray-300 rounded">
+                                                        <span v-else>{{ formatMinutesToHours(extraHour.total_minutes - extraHour.remaining_minutes) }}</span>
+                                                    </td>
+                                                </tr>
+                                                <tr v-if="availableExtraHours.length === 0">
+                                                    <td colspan="8" class="px-6 py-4 text-center text-sm text-gray-500">
+                                                        Nu există ore suplimentare disponibile pentru acest angajat.
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Grouped Extra Hours by Schedule -->
+                            <div v-else class="space-y-6">
+                                <div v-for="(group, index) in groupedExtraHours" :key="index"
+                                     class="bg-white rounded-lg shadow overflow-hidden">
+                                    <div
+                                        class="flex justify-between items-center p-5 border-b border-gray-200 bg-gray-50">
+                                        <div>
+                                            <h3 class="text-lg font-semibold text-gray-800">Program: {{
+                                                formatDate(group.schedule_date_start) }} - {{
+                                                formatTime(group.schedule_date_start) }} până
+                                                la {{ formatDate(group.schedule_date_finish) }} - {{
+                                                    formatTime(group.schedule_date_finish)
+                                                }}</h3>
+                                            <p class="text-sm text-gray-600 mt-1">Total ore suplimentare: {{
+                                                formatMinutesToHours(group.total_minutes) }} | Disponibile: {{
+                                                formatMinutesToHours(group.remaining_minutes) }}</p>
                                         </div>
-                                    </template>
+                                        <button v-if="hasSelectedHoursInGroup(group.schedule_id)"
+                                                @click="openReconciliationDrawer"
+                                                class="bg-brand hover:opacity-90 text-white uppercase text-sm font-medium rounded-md px-5 py-2">
+                                            Reconciliază ore selectate
+                                        </button>
+                                    </div>
 
-                                    <Column selectionMode="multiple" headerStyle="width: 3rem" />
-                                    <Column expander style="width: 3rem" />
+                                    <div class="overflow-x-auto">
+                                        <table class="min-w-full divide-y divide-gray-200">
+                                            <thead class="bg-gray-50">
+                                                <tr>
+                                                    <th scope="col"
+                                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        <input type="checkbox"
+                                                               :checked="isGroupAllSelected(group.schedule_id)"
+                                                               @change="toggleGroupExtraHours(group.schedule_id, $event.target.checked)"
+                                                               class="h-4 w-4 rounded border-gray-300">
+                                                    </th>
+                                                    <th scope="col"
+                                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Data
+                                                    </th>
+                                                    <th scope="col"
+                                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Interval orar
+                                                    </th>
+                                                    <th scope="col"
+                                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Descriere
+                                                    </th>
+                                                    <th scope="col"
+                                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Total
+                                                    </th>
+                                                    <th scope="col"
+                                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Disponibil
+                                                    </th>
+                                                    <th scope="col"
+                                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Expiră la
+                                                    </th>
+                                                    <th scope="col"
+                                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Utilizat
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="bg-white divide-y divide-gray-200">
+                                                <tr v-for="extraHour in group.extra_hours" :key="extraHour.id"
+                                                    :class="{ 'bg-brand/5': isSelected(extraHour.id) }">
+                                                    <td class="px-6 py-4 whitespace-nowrap">
+                                                        <input type="checkbox" :value="extraHour.id"
+                                                               v-model="selectedExtraHoursIds"
+                                                               @change="updateSelectedHours(extraHour)"
+                                                               class="h-4 w-4 rounded border-gray-300">
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {{ formatDate(extraHour.date) }}
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {{ formatTime(extraHour.start_time) }} - {{
+                                                            formatTime(extraHour.end_time) }}
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {{ extraHour.description || '-' }}
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {{ formatMinutesToHours(extraHour.total_minutes) }}
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {{ formatMinutesToHours(extraHour.remaining_minutes) }}
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {{ formatDate(extraHour.expiry_date) }}
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                        <input v-if="isSelected(extraHour.id)"
+                                                               type="number"
+                                                               v-model="getSelectedHour(extraHour.id).hours_to_use"
+                                                               @input="updateMinutesFromHours(extraHour.id)"
+                                                               min="1"
+                                                               :max="minutesToHoursForInput(extraHour.remaining_minutes)"
+                                                               class="w-20 px-2 py-1 border border-gray-300 rounded">
+                                                        <span v-else>-</span>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div v-if="groupedExtraHours.length === 0"
+                                     class="bg-white rounded-lg shadow p-5 text-center text-sm text-gray-500">
+                                    Nu există ore suplimentare disponibile pentru acest angajat.
+                                </div>
+                            </div>
 
-                                    <Column field="date" header="Data" sortable style="min-width: 8rem">
-                                        <template #body="{ data }">
-                                            {{ formatDate(data.date) }}
-                                        </template>
-                                    </Column>
-
-                                    <Column header="Interval orar" style="min-width: 10rem">
-                                        <template #body="{ data }">
-                                            {{ formatTime(data.start_time) }} - {{ formatTime(data.end_time) }}
-                                        </template>
-                                    </Column>
-
-                                    <Column field="overtime_justification" header="Justificare" style="min-width: 15rem">
-                                        <template #body="{ data }">
-                                            {{ data.employeeSchedule?.overtime_justification || data.description || '-' }}
-                                        </template>
-                                    </Column>
-
-                                    <Column field="total_minutes" header="Total ore" sortable style="min-width: 6rem; text-align: center">
-                                        <template #body="{ data }">
-                                            <div class="text-center">{{ formatMinutesToHours(data.total_minutes) }}</div>
-                                        </template>
-                                    </Column>
-
-                                    <Column field="remaining_minutes" header="Ore disponibile" sortable style="min-width: 6rem; text-align: center">
-                                        <template #body="{ data }">
-                                            <div class="text-center">{{ formatMinutesToHours(data.remaining_minutes) }}</div>
-                                        </template>
-                                    </Column>
-
-                                    <Column field="expiry_date" header="Expiră la" sortable style="min-width: 8rem">
-                                        <template #body="{ data }">
-                                            {{ formatDate(data.expiry_date) }}
-                                        </template>
-                                    </Column>
-
-                                    <Column header="Status" style="min-width: 8rem; text-align: center">
-                                        <template #body="{ data }">
-                                            <Tag v-if="data.is_fully_reconciled"
-                                                 severity="success"
-                                                 value="Recuperat complet" />
-                                            <Tag v-else-if="data.total_minutes > data.remaining_minutes"
-                                                 severity="warning"
-                                                 value="Parțial recuperat" />
-                                            <Tag v-else
-                                                 severity="info"
-                                                 value="Disponibil" />
-                                        </template>
-                                    </Column>
-
-                                    <Column header="Ore de folosit" style="min-width: 8rem; text-align: center">
-                                        <template #body="{ data }">
-                                            <input v-if="isSelectedInTable(data.id)"
-                                                   type="number"
-                                                   v-model="getSelectedHour(data.id).hours_to_use"
-                                                   @input="updateMinutesFromHours(data.id)"
-                                                   min="1"
-                                                   :max="minutesToHoursForInput(data.remaining_minutes)"
-                                                   class="w-20 px-2 border border-gray-300 rounded">
-                                            <span v-else>{{ formatMinutesToHours(data.total_minutes - data.remaining_minutes) }}</span>
-                                        </template>
-                                    </Column>
-
-                                    <template #expansion="slotProps">
-                                        <div class="p-3 bg-gray-50 border-t border-gray-200">
-                                            <h4 class="text-sm font-semibold mb-2">Istoric recuperări</h4>
-                                            <DataTable
-                                                :value="slotProps.data.reconciliations || []"
-                                                class="p-datatable-sm"
-                                                :rowHover="true"
-                                                stripedRows
-                                                showGridlines
-                                                tableStyle="min-width: 100%"
-                                            >
-                                                <template #empty>
-                                                    <div class="text-center py-2">
-                                                        Nu există recuperări pentru aceste ore.
-                                                    </div>
-                                                </template>
-
-                                                <Column field="reconciliation_date" header="Data recuperării" style="min-width: 8rem">
-                                                    <template #body="{ data }">
-                                                        {{ formatDate(data.reconciliation_date) }}
-                                                    </template>
-                                                </Column>
-
-                                                <Column field="minutes_reconciled" header="Ore recuperate" style="min-width: 6rem">
-                                                    <template #body="{ data }">
-                                                        {{ formatMinutesToHours(data.minutes_reconciled) }}
-                                                    </template>
-                                                </Column>
-
-                                                <Column field="notes" header="Observații" style="min-width: 15rem" />
-
-                                                <Column field="status" header="Status" style="min-width: 6rem">
-                                                    <template #body="{ data }">
-                                                        <Tag v-if="data.status === 'approved'" severity="success" value="Aprobat" />
-                                                        <Tag v-else-if="data.status === 'rejected'" severity="danger" value="Respins" />
-                                                        <Tag v-else severity="info" value="În așteptare" />
-                                                    </template>
-                                                </Column>
-                                            </DataTable>
-                                        </div>
-                                    </template>
-                                </DataTable>
+                            <!-- HISTORY TABLE -->
+                            <div v-if="reconciledExtraHours.length > 0" class="space-y-3">
+                                <div class="flex justify-between items-center uppercase h-10">
+                                    <h3 class="uppercase font-semibold">Istoric ore recuperate</h3>
+                                </div>
+                                <div class="rounded-lg border border-gray-200 overflow-hidden">
+                                    <div class="overflow-x-auto">
+                                        <table class="min-w-full divide-y divide-gray-200">
+                                            <thead class="bg-gray-50">
+                                                <tr>
+                                                    <th scope="col" class="p-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Data
+                                                    </th>
+                                                    <th scope="col" class="p-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Interval orar
+                                                    </th>
+                                                    <th scope="col" class="p-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Descriere
+                                                    </th>
+                                                    <th scope="col" class="p-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Total
+                                                    </th>
+                                                    <th scope="col" class="p-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Reconciliat
+                                                    </th>
+                                                    <th scope="col" class="p-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Data reconcilierii
+                                                    </th>
+                                                    <th scope="col" class="p-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Status
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="bg-white divide-y divide-gray-200">
+                                                <tr v-for="extraHour in reconciledExtraHours" :key="extraHour.id">
+                                                    <td class="px-5 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {{ formatDate(extraHour.date) }}
+                                                    </td>
+                                                    <td class="px-5 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {{ formatTime(extraHour.start_time) }} - {{ formatTime(extraHour.end_time) }}
+                                                    </td>
+                                                    <td class="px-5 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {{ extraHour.description || '-' }}
+                                                    </td>
+                                                    <td class="px-5 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {{ formatMinutesToHours(extraHour.total_minutes) }}
+                                                    </td>
+                                                    <td class="px-5 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {{ formatMinutesToHours(extraHour.reconciled_minutes) }}
+                                                    </td>
+                                                    <td class="px-5 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {{ extraHour.last_reconciled_date ? formatDate(extraHour.last_reconciled_date) : '-' }}
+                                                    </td>
+                                                    <td class="px-5 py-4 whitespace-nowrap text-sm">
+                                                        <span v-if="extraHour.status === 'expired'"
+                                                              class="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">
+                                                            Expirat
+                                                        </span>
+                                                        <span v-else-if="extraHour.is_fully_reconciled"
+                                                              class="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+                                                            Reconciliat
+                                                        </span>
+                                                        <span v-else-if="extraHour.reconciled_minutes > 0"
+                                                              class="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                                            Parțial reconciliat
+                                                        </span>
+                                                        <span v-else
+                                                              class="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                                            -
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                                <tr v-if="reconciledExtraHours.length === 0">
+                                                    <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
+                                                        Nu există ore reconciliate în istoric.
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -356,9 +514,7 @@ import Textarea from 'primevue/textarea'
 import ConfirmDialog from 'primevue/confirmdialog'
 import PrimaryButton from '@/Components/elements/PrimaryButton.vue'
 import SecondaryButton from '@/Components/elements/SecondaryButton.vue'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
-import Tag from 'primevue/tag'
+import InputSwitch from 'primevue/inputswitch'
 
 const props = defineProps({
     employees: Array,
@@ -367,8 +523,6 @@ const props = defineProps({
 
 // Component state
 const toast = useToast()
-const expandedRows = ref({})
-const selectedExtraHoursTable = ref([])
 
 const selectedBusinessUnitGroup = ref(null)
 const filteredEmployees = ref([])
@@ -401,73 +555,6 @@ const reconciliationForm = ref({
 })
 const errors = ref({})
 const isSubmitting = ref(false)
-
-// Metode pentru gestionarea selecției
-const onRowSelect = (event) => {
-    const extraHour = event.data
-    if (!isSelected(extraHour.id)) {
-        // Adaugă ID-ul la array-ul de selecție
-        selectedExtraHoursIds.value.push(extraHour.id)
-
-        // Adaugă ora selectată la array-ul de ore selectate
-        selectedHours.value.push({
-            id: extraHour.id,
-            date: extraHour.date,
-            start_time: extraHour.start_time,
-            end_time: extraHour.end_time,
-            remaining_minutes: extraHour.remaining_minutes,
-            minutes_to_use: extraHour.remaining_minutes,
-            hours_to_use: minutesToHoursForInput(extraHour.remaining_minutes),
-        })
-    }
-}
-
-const onRowUnselect = (event) => {
-    const extraHourId = event.data.id
-    // Elimină ID-ul din array-ul de selecție
-    selectedExtraHoursIds.value = selectedExtraHoursIds.value.filter(id => id !== extraHourId)
-
-    // Elimină ora din array-ul de ore selectate
-    selectedHours.value = selectedHours.value.filter(hour => hour.id !== extraHourId)
-}
-
-const onSelectionChange = (event) => {
-    // Actualizează selectedExtraHoursIds și selectedHours pentru a reflecta selecția curentă
-    const newSelectionIds = event.value.map(item => item.id)
-
-    // Găsește ID-urile care au fost eliminate
-    const removedIds = selectedExtraHoursIds.value.filter(id => !newSelectionIds.includes(id))
-
-    // Elimină orele care nu mai sunt selectate
-    selectedHours.value = selectedHours.value.filter(hour => !removedIds.includes(hour.id))
-
-    // Găsește ID-urile care au fost adăugate
-    const addedIds = newSelectionIds.filter(id => !selectedExtraHoursIds.value.includes(id))
-
-    // Adaugă noile ore selectate
-    addedIds.forEach(id => {
-        const extraHour = availableExtraHours.value.find(hour => hour.id === id)
-        if (extraHour) {
-            selectedHours.value.push({
-                id: extraHour.id,
-                date: extraHour.date,
-                start_time: extraHour.start_time,
-                end_time: extraHour.end_time,
-                remaining_minutes: extraHour.remaining_minutes,
-                minutes_to_use: extraHour.remaining_minutes,
-                hours_to_use: minutesToHoursForInput(extraHour.remaining_minutes),
-            })
-        }
-    })
-
-    // Actualizează array-ul de ID-uri selectate
-    selectedExtraHoursIds.value = newSelectionIds
-}
-
-// Verifică dacă un ID de oră suplimentară este selectat în tabel
-const isSelectedInTable = (id) => {
-    return selectedExtraHoursTable.value.some(item => item.id === id)
-}
 
 // Computed properties
 const totalSelectedMinutes = computed(() => {
@@ -505,37 +592,43 @@ const loadEmployeesByBusinessUnitGroup = async () => {
     }
 }
 
+const onGroupByChange = () => {
+    if (selectedEmployee.value) {
+        loadExtraHours()
+    }
+}
+
 const loadExtraHours = async () => {
     if (!selectedEmployee.value) {
         availableExtraHours.value = []
         groupedExtraHours.value = []
-        reconciledExtraHours.value = []
+        reconciledExtraHours.value = [] // Initialize the reconciled hours array
         return
     }
 
     try {
         console.log('Loading extra hours for employee:', selectedEmployee.value.id)
 
+        // Convert the boolean value to a numeric value (1 for true, 0 for false)
         const groupParam = groupBySchedule.value ? 1 : 0
 
         const response = await axios.get('/api/extra-hours/available', {
             params: {
                 employee_id: selectedEmployee.value.id,
                 group_by_schedule: groupParam,
-                include_reconciled: 1,
+                include_reconciled: 1, // Add this parameter to get reconciled hours
+                // Add a timestamp to prevent caching
                 _t: new Date().getTime(),
             },
         })
 
         console.log('API response after reload:', response.data)
 
-        // Salvează selecțiile curente pentru a le restabili după reload
-        const currentSelectedIds = [...selectedExtraHoursIds.value]
-
-        // Actualizează datele
+        // Update the data
         availableExtraHours.value = response.data.extraHours
         summary.value = response.data.summary
 
+        // Store reconciled hours if they exist
         if (response.data.reconciledHours) {
             reconciledExtraHours.value = response.data.reconciledHours
         } else {
@@ -544,7 +637,9 @@ const loadExtraHours = async () => {
 
         if (groupBySchedule.value && response.data.groupedExtraHours) {
             groupedExtraHours.value = response.data.groupedExtraHours
+            console.log('Updated grouped extra hours')
 
+            // Store grouped reconciled hours if they exist
             if (response.data.groupedReconciledHours) {
                 groupedReconciledHours.value = response.data.groupedReconciledHours
             } else {
@@ -555,44 +650,10 @@ const loadExtraHours = async () => {
             groupedReconciledHours.value = []
         }
 
-        // Resetează selecțiile
+        // Reset selections
         selectedExtraHoursIds.value = []
         selectedHours.value = []
-        selectedExtraHoursTable.value = []
         selectAll.value = false
-
-        // Restabilește selecțiile anterioare
-        if (currentSelectedIds.length > 0) {
-            // Găsește orele care există încă în lista actualizată
-            const validIds = currentSelectedIds.filter(id =>
-                availableExtraHours.value.some(hour => hour.id === id),
-            )
-
-            if (validIds.length > 0) {
-                // Setează ID-urile valide
-                selectedExtraHoursIds.value = validIds
-
-                // Actualizează orele selectate
-                validIds.forEach(id => {
-                    const extraHour = availableExtraHours.value.find(hour => hour.id === id)
-                    if (extraHour) {
-                        selectedHours.value.push({
-                            id: extraHour.id,
-                            date: extraHour.date,
-                            start_time: extraHour.start_time,
-                            end_time: extraHour.end_time,
-                            remaining_minutes: extraHour.remaining_minutes,
-                            minutes_to_use: extraHour.remaining_minutes,
-                            hours_to_use: minutesToHoursForInput(extraHour.remaining_minutes),
-                        })
-                    }
-                })
-
-                // Setează selecția în tabel
-                selectedExtraHoursTable.value = availableExtraHours.value
-                    .filter(hour => validIds.includes(hour.id))
-            }
-        }
     } catch (error) {
         console.error('Error loading extra hours:', error)
         toast.error('Eroare la încărcarea orelor suplimentare')
